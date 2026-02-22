@@ -47,6 +47,10 @@ tasks.test {
 }
 
 kotlin {
+    // Keep the Java version of the ktlint-ruleset-template in sync with Java version supported by Gradle + Kotlin. See
+    // https://docs.gradle.org/current/userguide/compatibility.html. Contrary to the rest of the ktlint build, this version cannot always be
+    // run on latest Java version.
+    // Upgrade to Java 25 is only possible after upgrade to Kotlin 2.3.0
     jvmToolchain(21)
 }
 
