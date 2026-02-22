@@ -19,11 +19,10 @@ import com.pinterest.ktlint.rule.engine.core.api.ElementType.IDENTIFIER
 import com.pinterest.ktlint.rule.engine.core.api.ElementType.IMPORT_LIST
 import com.pinterest.ktlint.rule.engine.core.api.ElementType.PACKAGE_DIRECTIVE
 import com.pinterest.ktlint.rule.engine.core.api.ElementType.REGULAR_STRING_PART
-import com.pinterest.ktlint.rule.engine.core.api.Rule
-import com.pinterest.ktlint.rule.engine.core.api.Rule.VisitorModifier.RunAsLateAsPossible
-import com.pinterest.ktlint.rule.engine.core.api.RuleAutocorrectApproveHandler
 import com.pinterest.ktlint.rule.engine.core.api.RuleId
-import com.pinterest.ktlint.rule.engine.core.api.RuleProvider
+import com.pinterest.ktlint.rule.engine.core.api.RuleV2
+import com.pinterest.ktlint.rule.engine.core.api.RuleV2.VisitorModifier.RunAsLateAsPossible
+import com.pinterest.ktlint.rule.engine.core.api.RuleV2InstanceProvider
 import com.pinterest.ktlint.rule.engine.core.api.editorconfig.END_OF_LINE_PROPERTY
 import com.pinterest.ktlint.rule.engine.core.api.editorconfig.EditorConfig
 import com.pinterest.ktlint.rule.engine.core.api.ifAutocorrectAllowed
@@ -50,7 +49,7 @@ class KtLintTest {
                 KtLintRuleEngine(
                     ruleProviders =
                         setOf(
-                            RuleProvider {
+                            RuleV2InstanceProvider {
                                 DummyRule { node ->
                                     if (node.isRoot20) {
                                         numberOfRootNodesVisited++
@@ -73,7 +72,7 @@ class KtLintTest {
                 KtLintRuleEngine(
                     ruleProviders =
                         setOf(
-                            RuleProvider { AutoCorrectErrorRule() },
+                            RuleV2InstanceProvider { AutoCorrectErrorRule() },
                         ),
                 ).lint(Code.fromSnippet(code)) { e ->
                     callbacks.add(
@@ -116,7 +115,7 @@ class KtLintTest {
                 KtLintRuleEngine(
                     ruleProviders =
                         setOf(
-                            RuleProvider {
+                            RuleV2InstanceProvider {
                                 DummyRule { node ->
                                     if (node.isRoot20) {
                                         numberOfRootNodesVisited++
@@ -145,7 +144,7 @@ class KtLintTest {
                     KtLintRuleEngine(
                         ruleProviders =
                             setOf(
-                                RuleProvider { AutoCorrectErrorRule() },
+                                RuleV2InstanceProvider { AutoCorrectErrorRule() },
                             ),
                     ).format(Code.fromSnippet(code)) { e ->
                         callbacks.add(
@@ -193,14 +192,14 @@ class KtLintTest {
         KtLintRuleEngine(
             ruleProviders =
                 setOf(
-                    RuleProvider {
+                    RuleV2InstanceProvider {
                         SimpleTestRule(
                             ruleExecutionCalls = ruleExecutionCalls,
                             ruleId = SimpleTestRule.RULE_ID_A,
                             visitorModifiers = setOf(),
                         )
                     },
-                    RuleProvider {
+                    RuleV2InstanceProvider {
                         SimpleTestRule(
                             ruleExecutionCalls = ruleExecutionCalls,
                             ruleId = SimpleTestRule.RULE_ID_B,
@@ -237,20 +236,20 @@ class KtLintTest {
         KtLintRuleEngine(
             ruleProviders =
                 setOf(
-                    RuleProvider {
+                    RuleV2InstanceProvider {
                         SimpleTestRule(
                             ruleExecutionCalls = ruleExecutionCalls,
                             ruleId = SimpleTestRule.RULE_ID_D,
                             visitorModifiers = setOf(RunAsLateAsPossible),
                         )
                     },
-                    RuleProvider {
+                    RuleV2InstanceProvider {
                         SimpleTestRule(
                             ruleExecutionCalls = ruleExecutionCalls,
                             ruleId = SimpleTestRule.RULE_ID_B,
                         )
                     },
-                    RuleProvider {
+                    RuleV2InstanceProvider {
                         SimpleTestRule(
                             ruleExecutionCalls = ruleExecutionCalls,
                             ruleId = SimpleTestRule.RULE_ID_C,
@@ -302,7 +301,7 @@ class KtLintTest {
             KtLintRuleEngine(
                 ruleProviders =
                     setOf(
-                        RuleProvider { DummyRule() },
+                        RuleV2InstanceProvider { DummyRule() },
                     ),
                 editorConfigOverride =
                     EditorConfigOverride.from(
@@ -323,7 +322,7 @@ class KtLintTest {
             KtLintRuleEngine(
                 ruleProviders =
                     setOf(
-                        RuleProvider {
+                        RuleV2InstanceProvider {
                             SimpleTestRule(
                                 ruleId = SimpleTestRule.RULE_ID_STOP_TRAVERSAL,
                                 ruleExecutionCalls = ruleExecutionCalls,
@@ -355,7 +354,7 @@ class KtLintTest {
             KtLintRuleEngine(
                 ruleProviders =
                     setOf(
-                        RuleProvider {
+                        RuleV2InstanceProvider {
                             SimpleTestRule(
                                 ruleId = SimpleTestRule.RULE_ID_STOP_TRAVERSAL,
                                 ruleExecutionCalls = ruleExecutionCalls,
@@ -396,7 +395,7 @@ class KtLintTest {
             KtLintRuleEngine(
                 ruleProviders =
                     setOf(
-                        RuleProvider {
+                        RuleV2InstanceProvider {
                             SimpleTestRule(
                                 ruleId = SimpleTestRule.RULE_ID_STOP_TRAVERSAL,
                                 ruleExecutionCalls = ruleExecutionCalls,
@@ -429,7 +428,7 @@ class KtLintTest {
             KtLintRuleEngine(
                 ruleProviders =
                     setOf(
-                        RuleProvider {
+                        RuleV2InstanceProvider {
                             SimpleTestRule(
                                 ruleId = SimpleTestRule.RULE_ID_STOP_TRAVERSAL,
                                 ruleExecutionCalls = ruleExecutionCalls,
@@ -455,7 +454,7 @@ class KtLintTest {
         KtLintRuleEngine(
             ruleProviders =
                 setOf(
-                    RuleProvider { WithStateRule() },
+                    RuleV2InstanceProvider { WithStateRule() },
                 ),
         ).format(EMPTY_CODE_SNIPPET) { _ -> AutocorrectDecision.ALLOW_AUTOCORRECT }
     }
@@ -472,7 +471,7 @@ class KtLintTest {
             KtLintRuleEngine(
                 ruleProviders =
                     setOf(
-                        RuleProvider { AutoCorrectErrorRule() },
+                        RuleV2InstanceProvider { AutoCorrectErrorRule() },
                     ),
             ).format(Code.fromSnippet(code)) { _ -> AutocorrectDecision.ALLOW_AUTOCORRECT }
         assertThat(actualFormattedCode).isEqualTo(code)
@@ -492,11 +491,10 @@ class KtLintTest {
  */
 private open class DummyRule(
     val block: (node: ASTNode) -> Unit = {},
-) : Rule(
+) : RuleV2(
         ruleId = RuleId("test:dummy"),
         about = About(),
-    ),
-    RuleAutocorrectApproveHandler {
+    ) {
     override fun beforeVisitChildNodes(
         node: ASTNode,
         emit: (offset: Int, errorMessage: String, canBeAutoCorrected: Boolean) -> AutocorrectDecision,
@@ -509,11 +507,10 @@ private open class DummyRule(
  * A dummy rule for testing
  */
 private class AutoCorrectErrorRule :
-    Rule(
+    RuleV2(
         ruleId = AUTOCORRECT_ERROR_RULE_ID,
         about = About(),
-    ),
-    RuleAutocorrectApproveHandler {
+    ) {
     override fun beforeVisitChildNodes(
         node: ASTNode,
         emit: (offset: Int, errorMessage: String, canBeAutoCorrected: Boolean) -> AutocorrectDecision,
@@ -544,9 +541,9 @@ private class AutoCorrectErrorRule :
 }
 
 /**
- * Rule in style starting from ktlint 0.47.x in which a rule can can override method [Rule.beforeFirstNode],
- * [Rule.beforeVisitChildNodes], [Rule.afterVisitChildNodes] and [Rule.afterLastNode]. For each invocation to
- * this method a [RuleExecutionCall] is added to the list of previously calls made.
+ * Rule in style starting from ktlint 0.47.x in which a rule can can override method [RuleV2.beforeFirstNode],
+ * [RuleV2.beforeVisitChildNodes], [RuleV2.afterVisitChildNodes] and [RuleV2.afterLastNode]. For each invocation to this method a
+ * [RuleExecutionCall] is added to the list of previously calls made.
  */
 private class SimpleTestRule(
     private val ruleExecutionCalls: MutableList<RuleExecutionCall>,
@@ -556,12 +553,11 @@ private class SimpleTestRule(
     private val stopTraversalInBeforeVisitChildNodes: (ASTNode) -> Boolean = { false },
     private val stopTraversalInAfterVisitChildNodes: (ASTNode) -> Boolean = { false },
     private val stopTraversalInAfterLastNode: Boolean = false,
-) : Rule(
+) : RuleV2(
         ruleId = ruleId,
         about = About(),
         visitorModifiers,
-    ),
-    RuleAutocorrectApproveHandler {
+    ) {
     override fun beforeFirstNode(editorConfig: EditorConfig) {
         ruleExecutionCalls.add(RuleExecutionCall(ruleId, BEFORE_FIRST))
         if (stopTraversalInBeforeFirstNode) {
@@ -658,11 +654,10 @@ private data class CallbackResult(
  * This rule throws an exception when it is visited more than once.
  */
 private class WithStateRule :
-    Rule(
+    RuleV2(
         ruleId = RuleId("test:with-state"),
         about = About(),
-    ),
-    RuleAutocorrectApproveHandler {
+    ) {
     private var hasNotBeenVisitedYet = true
 
     override fun beforeFirstNode(editorConfig: EditorConfig) {

@@ -8,11 +8,10 @@ import com.pinterest.ktlint.rule.engine.api.KtLintRuleEngine
 import com.pinterest.ktlint.rule.engine.api.LintError
 import com.pinterest.ktlint.rule.engine.core.api.AutocorrectDecision
 import com.pinterest.ktlint.rule.engine.core.api.ElementType.IDENTIFIER
-import com.pinterest.ktlint.rule.engine.core.api.Rule
-import com.pinterest.ktlint.rule.engine.core.api.RuleAutocorrectApproveHandler
 import com.pinterest.ktlint.rule.engine.core.api.RuleId
-import com.pinterest.ktlint.rule.engine.core.api.RuleProvider
 import com.pinterest.ktlint.rule.engine.core.api.RuleSetId
+import com.pinterest.ktlint.rule.engine.core.api.RuleV2
+import com.pinterest.ktlint.rule.engine.core.api.RuleV2InstanceProvider
 import com.pinterest.ktlint.rule.engine.core.api.editorconfig.RuleExecution
 import com.pinterest.ktlint.rule.engine.core.api.editorconfig.createRuleExecutionEditorConfigProperty
 import com.pinterest.ktlint.rule.engine.internal.FormatterTags.Companion.FORMATTER_TAGS_ENABLED_PROPERTY
@@ -246,7 +245,7 @@ class SuppressionLocatorTest {
                 lint(
                     code,
                     editorConfigOverride = EditorConfigOverride.from(FORMATTER_TAGS_ENABLED_PROPERTY to true),
-                    ruleProviders = setOf(RuleProvider { IndentationRule() }),
+                    ruleProviders = setOf(RuleV2InstanceProvider { IndentationRule() }),
                 )
             assertThat(actual).containsExactly(
                 lintError(1, 5, "standard:no-foo-identifier-standard"),
@@ -271,7 +270,7 @@ class SuppressionLocatorTest {
                 lint(
                     code,
                     editorConfigOverride = EditorConfigOverride.from(FORMATTER_TAGS_ENABLED_PROPERTY to true),
-                    ruleProviders = setOf(RuleProvider { IndentationRule() }),
+                    ruleProviders = setOf(RuleV2InstanceProvider { IndentationRule() }),
                 )
             assertThat(actual).containsExactly(
                 lintError(1, 12, "standard:no-foo-identifier-standard"),
@@ -412,7 +411,7 @@ class SuppressionLocatorTest {
             KtLintRuleEngine(
                 ruleProviders =
                     setOf(
-                        RuleProvider { IndentationRule() },
+                        RuleV2InstanceProvider { IndentationRule() },
                     ),
                 editorConfigOverride =
                     EMPTY_EDITOR_CONFIG_OVERRIDE
@@ -454,10 +453,7 @@ class SuppressionLocatorTest {
 
         val actual =
             KtLintRuleEngine(
-                ruleProviders =
-                    setOf(
-                        RuleProvider { IndentationRule() },
-                    ),
+                ruleProviders = setOf(RuleV2InstanceProvider { IndentationRule() }),
                 editorConfigOverride =
                     EMPTY_EDITOR_CONFIG_OVERRIDE
                         .plus(
@@ -492,7 +488,7 @@ class SuppressionLocatorTest {
             lint(
                 code,
                 editorConfigOverride = EditorConfigOverride.from(FORMATTER_TAGS_ENABLED_PROPERTY to true),
-                ruleProviders = setOf(RuleProvider { NoUnusedImportsRule() }),
+                ruleProviders = setOf(RuleV2InstanceProvider { NoUnusedImportsRule() }),
             )
         assertThat(actual).containsExactly(
             lintError(5, 5, "standard:no-foo-identifier-standard"),
@@ -502,11 +498,10 @@ class SuppressionLocatorTest {
 
     private class NoFooIdentifierRule(
         id: RuleId,
-    ) : Rule(
+    ) : RuleV2(
             ruleId = id,
             about = About(),
-        ),
-        RuleAutocorrectApproveHandler {
+        ) {
         override fun beforeVisitChildNodes(
             node: ASTNode,
             emit: (offset: Int, errorMessage: String, canBeAutoCorrected: Boolean) -> AutocorrectDecision,
@@ -520,7 +515,7 @@ class SuppressionLocatorTest {
     private fun lint(
         code: String,
         editorConfigOverride: EditorConfigOverride = EMPTY_EDITOR_CONFIG_OVERRIDE,
-        ruleProviders: Set<RuleProvider> = emptySet(),
+        ruleProviders: Set<RuleV2InstanceProvider> = emptySet(),
         ignoreKtlintSuppressionRule: Boolean = true,
     ) = ArrayList<LintError>().apply {
         KtLintRuleEngine(
@@ -528,8 +523,8 @@ class SuppressionLocatorTest {
                 setOf(
                     // The same rule is supplied once a standard rule and once as non-standard rule. Note that the
                     // ruleIds are different.
-                    RuleProvider { NoFooIdentifierRule(STANDARD_NO_FOO_IDENTIFIER_RULE_ID) },
-                    RuleProvider { NoFooIdentifierRule(NON_STANDARD_NO_FOO_IDENTIFIER_RULE_ID) },
+                    RuleV2InstanceProvider { NoFooIdentifierRule(STANDARD_NO_FOO_IDENTIFIER_RULE_ID) },
+                    RuleV2InstanceProvider { NoFooIdentifierRule(NON_STANDARD_NO_FOO_IDENTIFIER_RULE_ID) },
                 ).plus(ruleProviders),
             editorConfigOverride =
                 editorConfigOverride

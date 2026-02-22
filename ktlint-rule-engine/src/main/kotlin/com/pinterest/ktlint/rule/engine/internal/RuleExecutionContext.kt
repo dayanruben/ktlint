@@ -8,10 +8,9 @@ import com.pinterest.ktlint.rule.engine.api.KtLintRuleEngine.Companion.UTF8_BOM
 import com.pinterest.ktlint.rule.engine.api.KtLintRuleException
 import com.pinterest.ktlint.rule.engine.core.api.AutocorrectDecision
 import com.pinterest.ktlint.rule.engine.core.api.KtlintKotlinCompiler
-import com.pinterest.ktlint.rule.engine.core.api.Rule
-import com.pinterest.ktlint.rule.engine.core.api.RuleAutocorrectApproveHandler
 import com.pinterest.ktlint.rule.engine.core.api.RuleId
-import com.pinterest.ktlint.rule.engine.core.api.RuleProvider
+import com.pinterest.ktlint.rule.engine.core.api.RuleInstanceProvider
+import com.pinterest.ktlint.rule.engine.core.api.RuleV2
 import com.pinterest.ktlint.rule.engine.core.api.editorconfig.CODE_STYLE_PROPERTY
 import com.pinterest.ktlint.rule.engine.core.api.editorconfig.EditorConfig
 import com.pinterest.ktlint.rule.engine.core.api.editorconfig.RuleExecution
@@ -32,14 +31,14 @@ private val LOGGER = KotlinLogging.logger {}.initKtLintKLogger()
 internal class RuleExecutionContext private constructor(
     val code: Code,
     val rootNode: FileASTNode,
-    val ruleProviders: Set<RuleProvider>,
+    val ruleProviders: Set<RuleInstanceProvider>,
     val editorConfig: EditorConfig,
     val positionInTextLocator: (offset: Int) -> LineAndColumn,
 ) {
     private var suppressionLocator = SuppressionLocator(editorConfig)
 
     fun executeRule(
-        rule: Rule,
+        rule: RuleV2,
         autocorrectHandler: AutocorrectHandler,
         emitAndApprove: (offset: Int, errorMessage: String, canBeAutoCorrected: Boolean) -> AutocorrectDecision,
     ) {
@@ -89,117 +88,49 @@ internal class RuleExecutionContext private constructor(
 
     private fun executeRuleOnNodeRecursively(
         node: ASTNode,
-        rule: Rule,
+        rule: RuleV2,
         autocorrectHandler: AutocorrectHandler,
         emitAndApprove: (offset: Int, errorMessage: String, canBeAutoCorrected: Boolean) -> AutocorrectDecision,
     ) {
-        if (rule.shouldContinueTraversalOfAST()) {
-            try {
-                if (rule is RuleAutocorrectApproveHandler) {
-                    executeRuleWithAutocorrectApproveHandlerOnNodeRecursively(node, rule, autocorrectHandler, emitAndApprove)
-                } else {
-                    executeRuleWithoutAutocorrectApproveHandlerOnNodeRecursively(node, rule, autocorrectHandler, emitAndApprove)
+        try {
+            if (rule.shouldContinueTraversalOfAST()) {
+                val suppress = suppressionLocator.suppress(rootNode, node.startOffset, rule)
+                if (!suppress) {
+                    rule.beforeVisitChildNodes(node, emitAndApprove)
                 }
-            } catch (e: Throwable) {
-                if (autocorrectHandler is NoneAutocorrectHandler) {
-                    val (line, col) = positionInTextLocator(node.startOffset)
-                    throw RuleExecutionException(
-                        rule,
-                        line,
-                        col,
-                        // Prevent extreme long stack trace caused by recursive call and only pass root cause
-                        e.cause ?: e,
-                    )
-                } else {
-                    // line/col cannot be reliably mapped as exception might originate from a node not present in the
-                    // original AST
-                    throw RuleExecutionException(
-                        rule,
-                        0,
-                        0,
-                        // Prevent extreme long stack trace caused by recursive call and only pass root cause
-                        e.cause ?: e,
-                    )
+                if (rule.shouldContinueTraversalOfAST()) {
+                    node
+                        .getChildren(null)
+                        .forEach { childNode ->
+                            executeRuleOnNodeRecursively(
+                                childNode,
+                                rule,
+                                autocorrectHandler,
+                                emitAndApprove,
+                            )
+                        }
                 }
+                if (!suppress) {
+                    // Also call afterVisitChildNodes when shouldContinueTraversalOfAST has become false. In this way, cleanup in the rule is
+                    // still possible.
+                    rule.afterVisitChildNodes(node, emitAndApprove)
+                }
+            }
+        } catch (e: Throwable) {
+            if (autocorrectHandler is NoneAutocorrectHandler) {
+                val (line, col) = positionInTextLocator(node.startOffset)
+                // Prevent extreme long stack trace caused by recursive call and only pass root cause
+                val cause = e.cause ?: e
+                throw RuleExecutionException(rule, line, col, cause)
+            } else {
+                // Prevent extreme long stack trace caused by recursive call and only pass root cause
+                val cause = e.cause ?: e
+                // line/col cannot be reliably mapped as exception might originate from a node not present in the
+                // original AST
+                throw RuleExecutionException(rule, 0, 0, cause)
             }
         }
     }
-
-    @Deprecated(message = "Remove in Ktlint 2.0")
-    private fun executeRuleWithoutAutocorrectApproveHandlerOnNodeRecursively(
-        node: ASTNode,
-        rule: Rule,
-        autocorrectHandler: AutocorrectHandler,
-        emitAndApprove: (offset: Int, errorMessage: String, canBeAutoCorrected: Boolean) -> AutocorrectDecision,
-    ) {
-        require(rule !is RuleAutocorrectApproveHandler)
-        val autoCorrect =
-            autocorrectHandler is AllAutocorrectHandler ||
-                (
-                    autocorrectHandler is LintErrorAutocorrectHandler &&
-                        autocorrectHandler.autocorrectRuleWithoutAutocorrectApproveHandler
-                )
-        val emitOnly = emitAndApprove.onlyEmit()
-        val suppress = suppressionLocator.suppress(rootNode, node.startOffset, rule)
-        if (!suppress) {
-            rule.beforeVisitChildNodes(node, autoCorrect, emitOnly)
-        }
-        if (rule.shouldContinueTraversalOfAST()) {
-            node
-                .getChildren(null)
-                .forEach { childNode ->
-                    this.executeRuleOnNodeRecursively(
-                        childNode,
-                        rule,
-                        autocorrectHandler,
-                        emitAndApprove,
-                    )
-                }
-        }
-        if (!suppress) {
-            rule.afterVisitChildNodes(node, autoCorrect, emitOnly)
-        }
-    }
-
-    private fun executeRuleWithAutocorrectApproveHandlerOnNodeRecursively(
-        node: ASTNode,
-        rule: Rule,
-        autocorrectHandler: AutocorrectHandler,
-        emitAndApprove: (offset: Int, errorMessage: String, canBeAutoCorrected: Boolean) -> AutocorrectDecision,
-    ) {
-        require(rule is RuleAutocorrectApproveHandler)
-        val suppress = suppressionLocator.suppress(rootNode, node.startOffset, rule)
-        if (!suppress) {
-            rule.beforeVisitChildNodes(node, emitAndApprove)
-        }
-        if (rule.shouldContinueTraversalOfAST()) {
-            node
-                .getChildren(null)
-                .forEach { childNode ->
-                    this.executeRuleOnNodeRecursively(
-                        childNode,
-                        rule,
-                        autocorrectHandler,
-                        emitAndApprove,
-                    )
-                }
-        }
-        if (!suppress) {
-            rule.afterVisitChildNodes(node, emitAndApprove)
-        }
-    }
-
-    // Simplify the emitAndApprove to an emit only lambda which can be used in the legacy (deprecated) functions
-    @Deprecated(message = "Remove in Ktlint 2.0")
-    private fun ((offset: Int, errorMessage: String, canBeAutoCorrected: Boolean) -> AutocorrectDecision).onlyEmit() =
-        {
-            offset: Int,
-            errorMessage: String,
-            canBeAutoCorrected: Boolean,
-            ->
-            this(offset, errorMessage, canBeAutoCorrected)
-            Unit
-        }
 
     companion object {
         internal fun createRuleExecutionContext(
@@ -293,7 +224,7 @@ private fun EditorConfig.warnIfPropertyIsObsolete(
 }
 
 private class RuleExecutionException(
-    val rule: Rule,
+    val rule: RuleV2,
     val line: Int,
     val col: Int,
     override val cause: Throwable,
