@@ -10,7 +10,7 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    if: github.repository == 'pinterest/ktlint'
+    if: github.repository == 'ktlint/ktlint'
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
@@ -78,7 +78,7 @@ jobs:
         with:
           formula-name: ktlint
           formula-path: Formula/k/ktlint.rb
-          download-url: https://github.com/pinterest/ktlint/releases/download/${{ env.version }}/ktlint-${{ env.version }}.zip
+          download-url: https://github.com/ktlint/ktlint/releases/download/${{ env.version }}/ktlint-${{ env.version }}.zip
 
       - name: Update Release documentation
         if: ${{ success() }}

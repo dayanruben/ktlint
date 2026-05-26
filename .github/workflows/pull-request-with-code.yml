@@ -61,7 +61,7 @@ jobs:
           if [ $found -eq 0 ]; then
               exit 0
           else
-              echo "data classes found in one or more .api files. Visit https://github.com/pinterest/ktlint/issues/2133 for more details"
+              echo "data classes found in one or more .api files. Visit https://github.com/ktlint/ktlint/issues/2133 for more details"
               exit 1
           fi
         shell: bash
