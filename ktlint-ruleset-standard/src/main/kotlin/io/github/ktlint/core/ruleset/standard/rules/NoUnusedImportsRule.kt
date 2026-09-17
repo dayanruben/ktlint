@@ -27,12 +27,14 @@ import io.github.ktlint.core.rule.engine.core.api.prevLeaf
 import io.github.ktlint.core.rule.engine.core.api.prevSibling
 import io.github.ktlint.core.rule.engine.core.api.remove
 import io.github.ktlint.core.rule.engine.core.api.replaceTextWith
+import io.github.ktlint.core.rule.engine.core.util.safeAs
 import io.github.ktlint.core.ruleset.standard.StandardRule
 import org.jetbrains.kotlin.com.intellij.lang.ASTNode
 import org.jetbrains.kotlin.com.intellij.psi.impl.source.tree.CompositeElement
 import org.jetbrains.kotlin.kdoc.lexer.KDocTokens.MARKDOWN_LINK
 import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
 import org.jetbrains.kotlin.psi.KtImportDirective
+import org.jetbrains.kotlin.psi.KtNonPublicApi
 import org.jetbrains.kotlin.psi.KtPackageDirective
 import org.jetbrains.kotlin.resolve.ImportPath
 
@@ -73,9 +75,7 @@ public class NoUnusedImportsRule :
                 if (imports.containsKey(importPath)) {
                     // Emit directly when same import occurs more than once
                     emit(node.startOffset, "Unused import", true)
-                        .ifAutocorrectAllowed {
-                            node.psi.delete()
-                        }
+                        .ifAutocorrectAllowed { node.deleteImportDirective() }
                 } else {
                     imports[importPath] = node
                 }
@@ -123,6 +123,16 @@ public class NoUnusedImportsRule :
                 foundByKeyword = true
             }
         }
+    }
+
+    // `ktImportDirective.delete()` with Kotlin 2.4.0 results in exception below (`KtElementStub` is a superclass of `KtImportDirective`)
+    //    Caused by: java.lang.IllegalStateException: Cannot mutate Kotlin PSI because KtPsiMutationService is missing
+    // 	      at org.jetbrains.kotlin.psi.KtPsiMutationService$Companion.getInstance(KtPsiMutationService.kt:365)
+    // 	      at org.jetbrains.kotlin.psi.KtPsiMutationService.getInstance(KtPsiMutationService.kt)
+    // 	      at org.jetbrains.kotlin.psi.KtElementImplStub.delete(KtElementImplStub.java:99)
+    @OptIn(KtNonPublicApi::class)
+    private fun ASTNode.deleteImportDirective() {
+        psi.safeAs<KtImportDirective>()?.rawDelete()
     }
 
     override fun afterVisitChildNodes(
@@ -196,7 +206,7 @@ public class NoUnusedImportsRule :
                                     .takeIf { it.isWhiteSpaceWithNewline }
                                     ?.remove()
                             }
-                            importDirective.delete()
+                            node.deleteImportDirective()
                         }
                 }
             }
