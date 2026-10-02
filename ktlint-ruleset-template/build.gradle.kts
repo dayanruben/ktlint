@@ -24,7 +24,7 @@ version = "1.0-SNAPSHOT"
 // }
 
 // Remove when the Gradle task 'ktlintCheck' is not to be added to the project
-val ktlint: Configuration by configurations.creating
+val ktlint: Configuration = configurations.create("ktlint")
 
 // During development in the ktlint repository, substitute Maven coordinates with local projects.
 // External users who copy this template should remove this block and ensure mavenCentral() is in their repositories.
@@ -90,14 +90,15 @@ publishing {
 }
 
 // Remove when the Gradle task 'ktlintCheck' is not to be added to the project
-val ktlintCheck by tasks.registering(JavaExec::class) {
-    dependsOn(tasks.classes)
-    group = LifecycleBasePlugin.VERIFICATION_GROUP
-    mainClass = "io.github.ktlint.core.Main"
-    // Adding compiled classes of this ruleset to the classpath so that ktlint validates the ruleset using its own ruleset
-    classpath(ktlint, sourceSets.main.map { it.output })
-    args("--log-level=debug", "src/**/*.kt")
-}
+val ktlintCheck =
+    tasks.register<JavaExec>("ktlintCheck") {
+        dependsOn(tasks.classes)
+        group = LifecycleBasePlugin.VERIFICATION_GROUP
+        mainClass = "io.github.ktlint.core.Main"
+        // Adding compiled classes of this ruleset to the classpath so that ktlint validates the ruleset using its own ruleset
+        classpath(ktlint, sourceSets.main.map { it.output })
+        args("--log-level=debug", "src/**/*.kt")
+    }
 
 // Remove when the Gradle task 'ktlintCheck' is not to be added to the project
 tasks.check {
